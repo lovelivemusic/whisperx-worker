@@ -54,6 +54,7 @@ whisper_arch = "./models/faster-whisper-large-v3"
 class Output(BaseModel):
     segments: Any
     detected_language: str
+    overlaps: Any = None
 
 
 class Predictor(BasePredictor):
@@ -201,15 +202,18 @@ class Predictor(BasePredictor):
                 else:
                     logger.warning(f"Cannot align output as language {detected_language} is not supported for alignment")
 
+            overlaps = None
             if diarization:
-                result = diarize(audio, result, debug, huggingface_access_token, min_speakers, max_speakers)
+                result, overlaps = diarize(audio, result, debug, huggingface_access_token, min_speakers, max_speakers,
+                                           include_overlaps=True)
 
             if debug:
                 print(f"max gpu memory allocated over runtime: {torch.cuda.max_memory_reserved() / (1024 ** 3):.2f} GB")
 
         return Output(
             segments=result["segments"],
-            detected_language=detected_language
+            detected_language=detected_language,
+            overlaps=overlaps
         )
 
 
@@ -316,7 +320,8 @@ def align(audio, result, debug):
     return result
 
 
-def diarize(audio, result, debug, huggingface_access_token, min_speakers, max_speakers):
+def diarize(audio, result, debug, huggingface_access_token, min_speakers, max_speakers,
+            include_overlaps=False):
     start_time = time.time_ns() / 1e6
 
     from whisperx.diarize import DiarizationPipeline
@@ -326,6 +331,11 @@ def diarize(audio, result, debug, huggingface_access_token, min_speakers, max_sp
         device=device,
     )
     diarize_segments = diarize_model(audio, min_speakers=min_speakers, max_speakers=max_speakers)
+
+    # Extract overlap regions from diarization segments before merging with transcription
+    overlaps = None
+    if include_overlaps and diarize_segments is not None:
+        overlaps = _extract_overlaps_from_segments(diarize_segments)
 
     result = whisperx.assign_word_speakers(diarize_segments, result)
 
@@ -337,7 +347,51 @@ def diarize(audio, result, debug, huggingface_access_token, min_speakers, max_sp
     torch.cuda.empty_cache()
     del diarize_model
 
-    return result
+    return result, overlaps
+
+
+def _extract_overlaps_from_segments(diarize_segments):
+    """Extract time regions where 2+ speakers overlap from the diarization DataFrame."""
+    import pandas as pd
+
+    if not isinstance(diarize_segments, pd.DataFrame) or diarize_segments.empty:
+        return []
+
+    # diarize_segments has columns: segment (pyannote Segment), label (speaker), start, end
+    rows = []
+    for _, row in diarize_segments.iterrows():
+        rows.append({"start": float(row.get("start", 0)), "end": float(row.get("end", 0)),
+                      "speaker": str(row.get("label", row.get("speaker", "")))})
+
+    # Find overlapping regions between different speakers
+    overlaps = []
+    for i, a in enumerate(rows):
+        for b in rows[i+1:]:
+            if a["speaker"] == b["speaker"]:
+                continue
+            overlap_start = max(a["start"], b["start"])
+            overlap_end = min(a["end"], b["end"])
+            if overlap_end > overlap_start:
+                overlaps.append({
+                    "start": round(overlap_start, 3),
+                    "end": round(overlap_end, 3),
+                    "speakers": sorted([a["speaker"], b["speaker"]])
+                })
+
+    # Merge adjacent/overlapping overlap regions
+    if not overlaps:
+        return []
+
+    overlaps.sort(key=lambda x: x["start"])
+    merged = [overlaps[0]]
+    for o in overlaps[1:]:
+        last = merged[-1]
+        if o["start"] <= last["end"] and set(o["speakers"]) == set(last["speakers"]):
+            last["end"] = max(last["end"], o["end"])
+        else:
+            merged.append(o)
+
+    return merged
 
 def identify_speaker_for_segment(segment_embedding, known_embeddings, threshold=0.1):
     """

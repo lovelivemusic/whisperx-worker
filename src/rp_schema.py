@@ -82,5 +82,15 @@ INPUT_VALIDATIONS = {
         'type': list,
         'required': False,
         'default': []
+    },
+    'include_embeddings': {
+        'type': bool,
+        'required': False,
+        'default': False
+    },
+    'include_overlaps': {
+        'type': bool,
+        'required': False,
+        'default': False
     }
 }

@@ -159,7 +159,42 @@ def run(job):
         "segments"         : result.segments,
         "detected_language": result.detected_language
     }
-    # ------------------------------------------------embedding-info----------------
+
+    # Include overlap regions if requested and available
+    if job_input.get("include_overlaps", False) and result.overlaps:
+        output_dict["overlaps"] = result.overlaps
+        logger.info(f"Overlap regions: {len(result.overlaps)}")
+
+    # Extract per-speaker embeddings if requested (192-D ECAPA via SpeechBrain)
+    if job_input.get("include_embeddings", False) and job_input.get("diarization", False):
+        try:
+            import librosa
+            unique_speakers = set()
+            for seg in output_dict["segments"]:
+                spk = seg.get("speaker")
+                if spk:
+                    unique_speakers.add(spk)
+
+            speaker_embeddings = {}
+            for spk in unique_speakers:
+                # Find longest segment for this speaker
+                spk_segs = [s for s in output_dict["segments"] if s.get("speaker") == spk]
+                longest = max(spk_segs, key=lambda s: s["end"] - s["start"])
+                # Cap at 15 seconds
+                start = longest["start"]
+                duration = min(longest["end"] - start, 15.0)
+                wav, sr = librosa.load(audio_file_path, sr=16000, mono=True,
+                                       offset=start, duration=duration)
+                if len(wav) > 0:
+                    emb = speaker_processing.spk_embed(wav)
+                    speaker_embeddings[spk] = emb.flatten().tolist()
+
+            if speaker_embeddings:
+                output_dict["speaker_embeddings"] = speaker_embeddings
+                logger.info(f"Speaker embeddings: {len(speaker_embeddings)} speakers, 192-D each")
+        except Exception as e:
+            logger.error(f"Embedding extraction failed: {e}", exc_info=True)
+
     # 4) speaker verification (optional)
     if embeddings:
         try:
