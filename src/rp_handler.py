@@ -194,6 +194,7 @@ def run(job):
                 logger.info(f"Speaker embeddings: {len(speaker_embeddings)} speakers, 192-D each")
         except Exception as e:
             logger.error(f"Embedding extraction failed: {e}", exc_info=True)
+            output_dict["embedding_error"] = str(e)
 
     # 4) speaker verification (optional)
     if embeddings:
