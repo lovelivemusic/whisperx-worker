@@ -4,6 +4,16 @@
 
 A serverless worker that provides high-quality speech transcription with timestamp alignment and speaker diarization using WhisperX on the Runpod platform.
 
+## Build & Deploy
+
+```bash
+cd ~/whisperx-worker
+docker build -t wearethemods/whisperx-worker:latest .
+docker push wearethemods/whisperx-worker:latest
+```
+
+Then restart the RunPod endpoint to pull the new image.
+
 ## Prerequisites
 
 Diarization and speaker verification require access to gated models on Hugging Face. You must accept the terms for each model before using those features:
