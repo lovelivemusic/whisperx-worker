@@ -19,6 +19,7 @@ from speaker_profiles import load_embeddings, relabel
 from speaker_processing import (
     process_diarized_output, enroll_profiles, identify_speakers_on_segments,
     load_known_speakers_from_samples, identify_speaker, relabel_speakers_by_avg_similarity,
+    spk_embed,
 )
 
 # ---------------------------------------------------------------------------
@@ -186,7 +187,7 @@ def run(job):
                 wav, sr = librosa.load(audio_file_path, sr=16000, mono=True,
                                        offset=start, duration=duration)
                 if len(wav) > 0:
-                    emb = speaker_processing.spk_embed(wav)
+                    emb = spk_embed(wav)
                     speaker_embeddings[spk] = emb.flatten().tolist()
 
             if speaker_embeddings:
