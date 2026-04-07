@@ -16,6 +16,7 @@ from runpod.serverless.utils import download_files_from_urls, rp_cleanup
 from rp_schema import INPUT_VALIDATIONS
 from predict import Predictor, Output
 from speaker_profiles import load_embeddings, relabel
+from panns_classify import classify_sed
 from speaker_processing import (
     process_diarized_output, enroll_profiles, identify_speakers_on_segments,
     load_known_speakers_from_samples, identify_speaker, relabel_speakers_by_avg_similarity,
@@ -95,6 +96,9 @@ def run(job):
     if "errors" in validated:
         return {"error": validated["errors"]}
 
+    # ------------- route by task -----------------------------------
+    task = job_input.get("task", "transcribe")
+
     # ------------- 1) resolve audio input (URL or base64) -----------
     audio_input = job_input["audio_file"]
     try:
@@ -116,6 +120,22 @@ def run(job):
     except Exception as e:
         logger.error("Audio input failed", exc_info=True)
         return {"error": f"audio input: {e}"}
+
+    # ------------- PANNs classification task -------------------------
+    if task == "classify":
+        try:
+            result = classify_sed(
+                audio_file_path,
+                frame_size=job_input.get("frame_size", 0.5),
+                merge_threshold=job_input.get("merge_threshold", 0.5),
+                refine_boundaries=job_input.get("refine_boundaries", True),
+            )
+            cleanup_job_files(job_id)
+            return result
+        except Exception as e:
+            logger.error("PANNs classification failed", exc_info=True)
+            cleanup_job_files(job_id)
+            return {"error": f"classification: {e}"}
 
     # ------------- 2) download speaker profiles (optional) ----------
     speaker_profiles = job_input.get("speaker_samples", [])

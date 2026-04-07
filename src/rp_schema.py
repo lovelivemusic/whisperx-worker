@@ -83,6 +83,26 @@ INPUT_VALIDATIONS = {
         'required': False,
         'default': []
     },
+    'task': {
+        'type': str,
+        'required': False,
+        'default': 'transcribe'
+    },
+    'frame_size': {
+        'type': float,
+        'required': False,
+        'default': 0.5
+    },
+    'merge_threshold': {
+        'type': float,
+        'required': False,
+        'default': 0.5
+    },
+    'refine_boundaries': {
+        'type': bool,
+        'required': False,
+        'default': True
+    },
     'include_embeddings': {
         'type': bool,
         'required': False,

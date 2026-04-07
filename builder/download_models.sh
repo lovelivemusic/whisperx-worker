@@ -42,6 +42,15 @@ download "https://huggingface.co/Systran/faster-whisper-large-v3/resolve/main/vo
 echo "Faster Whisper model downloaded."
 
 # ===================================
+# Download PANNs CNN14 model + labels
+# ===================================
+panns_dir="/root/panns_data"
+mkdir -p "$panns_dir"
+download "https://zenodo.org/records/3987831/files/Cnn14_mAP%3D0.431.pth" "$panns_dir/Cnn14_mAP=0.431.pth"
+download "https://raw.githubusercontent.com/qiuqiangkong/audioset_tagging_cnn/master/metadata/class_labels_indices.csv" "$panns_dir/class_labels_indices.csv"
+echo "PANNs CNN14 model downloaded."
+
+# ===================================
 # VAD and wav2vec2 are Docker-handled
 # ===================================
 

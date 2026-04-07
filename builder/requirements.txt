@@ -18,6 +18,9 @@ sentencepiece
 # ---------- speaker embedding ----------
 speechbrain>=1.0.0
 
+# ---------- audio classification (PANNs) ----------
+panns-inference
+
 # ---------- utilities ----------
 pydub
 numpy>=2.1.0
