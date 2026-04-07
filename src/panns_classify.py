@@ -160,10 +160,16 @@ def classify_sed(audio_path, frame_size=0.5, merge_threshold=0.5, refine_boundar
 
     logger.info(f"SED complete: {len(frames)} frames -> {len(filtered)} segments in {inference_time:.2f}s")
 
+    # Include GPU name for cost tracking
+    gpu_name = None
+    if torch.cuda.is_available():
+        gpu_name = torch.cuda.get_device_name(0)
+
     return {
         'segments': filtered,
         'frame_count': len(frames),
         'total_duration_s': round(total_duration, 2),
         'frame_size': frame_size,
         'inference_time_s': round(inference_time, 2),
+        'gpu_name': gpu_name,
     }
