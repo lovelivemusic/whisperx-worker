@@ -176,9 +176,19 @@ def run(job):
         logger.error("WhisperX prediction failed", exc_info=True)
         return {"error": f"prediction: {e}"}
 
+    # GPU and worker info
+    gpu_name = None
+    try:
+        if torch.cuda.is_available():
+            gpu_name = torch.cuda.get_device_name(0)
+    except Exception:
+        pass
+
     output_dict = {
         "segments"         : result.segments,
-        "detected_language": result.detected_language
+        "detected_language": result.detected_language,
+        "gpu_name"         : gpu_name,
+        "worker_version"   : "11",
     }
 
     # Include overlap regions if requested and available
