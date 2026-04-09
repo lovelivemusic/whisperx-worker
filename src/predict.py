@@ -67,16 +67,7 @@ class Predictor(BasePredictor):
                 os.makedirs('/root/.cache/torch', exist_ok=True)
                 shutil.copy(bundled, vad_cache)
 
-        # Preload WhisperX model so worker is ready before accepting jobs
-        import logging
-        logger = logging.getLogger("predict")
-        logger.info("Preloading WhisperX model...")
-        self._preloaded_model = whisperx.load_model(
-            whisper_arch, device, compute_type=compute_type,
-            asr_options={"beam_size": 5},
-            vad_options={"vad_onset": 0.500, "vad_offset": 0.363},
-        )
-        logger.info("WhisperX model preloaded and ready")
+        # Note: WhisperX model loaded on first request (preloading caused container crashes on some GPUs)
 
     def predict(
             self,
@@ -179,13 +170,8 @@ class Predictor(BasePredictor):
 
             start_time = time.time_ns() / 1e6
 
-            # Reuse preloaded model when possible (no language specified or same language)
-            if hasattr(self, '_preloaded_model') and self._preloaded_model is not None:
-                model = self._preloaded_model
-                logger.info("Using preloaded WhisperX model")
-            else:
-                model = whisperx.load_model(whisper_arch, device, compute_type=compute_type, language=language,
-                                            asr_options=asr_options, vad_options=vad_options)
+            model = whisperx.load_model(whisper_arch, device, compute_type=compute_type, language=language,
+                                        asr_options=asr_options, vad_options=vad_options)
 
             if debug:
                 elapsed_time = time.time_ns() / 1e6 - start_time
