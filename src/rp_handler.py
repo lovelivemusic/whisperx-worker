@@ -73,6 +73,12 @@ else:
 MODEL = Predictor()
 MODEL.setup()
 
+# Preload PANNs CNN14 model so classify jobs don't delay on first request
+logger.info("Preloading PANNs CNN14 model...")
+from panns_classify import _get_model
+_get_model()
+logger.info("All models preloaded — worker ready")
+
 def cleanup_job_files(job_id, jobs_directory='/jobs'):
     job_path = os.path.join(jobs_directory, job_id)
     if os.path.exists(job_path):
