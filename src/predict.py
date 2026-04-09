@@ -67,7 +67,7 @@ class Predictor(BasePredictor):
                 os.makedirs('/root/.cache/torch', exist_ok=True)
                 shutil.copy(bundled, vad_cache)
 
-        # WhisperX model loaded on first request (preload causes container OOM on RunPod)
+        # Note: WhisperX model loaded on first request (preloading caused container crashes on some GPUs)
 
     def predict(
             self,
