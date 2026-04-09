@@ -67,7 +67,33 @@ class Predictor(BasePredictor):
                 os.makedirs('/root/.cache/torch', exist_ok=True)
                 shutil.copy(bundled, vad_cache)
 
-        # Note: WhisperX model loaded on first request (preloading caused container crashes on some GPUs)
+        # Attempt WhisperX model preload with detailed logging
+        import logging
+        _logger = logging.getLogger("predict")
+        try:
+            import torch
+            _logger.info(f"WhisperX preload: CUDA available={torch.cuda.is_available()}")
+            if torch.cuda.is_available():
+                _logger.info(f"WhisperX preload: GPU={torch.cuda.get_device_name(0)}, VRAM={torch.cuda.get_device_properties(0).total_mem / 1024**3:.1f}GB")
+                _logger.info(f"WhisperX preload: VRAM free={torch.cuda.mem_get_info()[0] / 1024**3:.1f}GB / {torch.cuda.mem_get_info()[1] / 1024**3:.1f}GB")
+            model_path = whisper_arch
+            _logger.info(f"WhisperX preload: model_path={model_path}, exists={os.path.exists(model_path)}")
+            if os.path.exists(model_path):
+                _logger.info("WhisperX preload: Loading model...")
+                self._preloaded_model = whisperx.load_model(
+                    whisper_arch, device, compute_type=compute_type,
+                    asr_options={"beam_size": 5},
+                    vad_options={"vad_onset": 0.500, "vad_offset": 0.363},
+                )
+                if torch.cuda.is_available():
+                    _logger.info(f"WhisperX preload: SUCCESS. VRAM after load={torch.cuda.mem_get_info()[0] / 1024**3:.1f}GB free")
+                else:
+                    _logger.info("WhisperX preload: SUCCESS (CPU mode)")
+            else:
+                _logger.warning(f"WhisperX preload: SKIPPED — model path '{model_path}' not found")
+        except Exception as e:
+            _logger.error(f"WhisperX preload: FAILED — {type(e).__name__}: {e}")
+            _logger.info("WhisperX will load on first request instead")
 
     def predict(
             self,
@@ -170,8 +196,12 @@ class Predictor(BasePredictor):
 
             start_time = time.time_ns() / 1e6
 
-            model = whisperx.load_model(whisper_arch, device, compute_type=compute_type, language=language,
-                                        asr_options=asr_options, vad_options=vad_options)
+            if hasattr(self, '_preloaded_model') and self._preloaded_model is not None:
+                model = self._preloaded_model
+                logger.info("Using preloaded WhisperX model")
+            else:
+                model = whisperx.load_model(whisper_arch, device, compute_type=compute_type, language=language,
+                                            asr_options=asr_options, vad_options=vad_options)
 
             if debug:
                 elapsed_time = time.time_ns() / 1e6 - start_time
