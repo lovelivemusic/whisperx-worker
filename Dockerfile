@@ -36,6 +36,10 @@ RUN --mount=type=secret,id=hf_token /builder/download_models.sh
 RUN python3 -m lightning.pytorch.utilities.upgrade_checkpoint \
     /usr/local/lib/python3.12/dist-packages/whisperx/assets/pytorch_model.bin || true
 
+# Embed git commit hash at build time
+ARG GIT_COMMIT=unknown
+ENV GIT_COMMIT=${GIT_COMMIT}
+
 # Copy source code
 COPY src .
 
