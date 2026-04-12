@@ -128,7 +128,7 @@ def run(job):
             logger.info(f"[WARMUP] Model loaded: {model_loaded}, "
                         f"PANNs loaded: True, Diarization: available")
 
-        return {"status": "warm", "preload": "done" if preload else "skipped", "model_loaded": model_loaded}
+        return {"status": "warm", "preload": "done" if preload else "skipped", "model_loaded": model_loaded, "worker_version": "12", "worker_commit": os.environ.get("GIT_COMMIT", "unknown")}
 
     # ------------- validate basic schema ----------------------------
     validated = validate(job_input, INPUT_VALIDATIONS)
@@ -227,7 +227,8 @@ def run(job):
         "segments"         : result.segments,
         "detected_language": result.detected_language,
         "gpu_name"         : gpu_name,
-        "worker_version"   : "11",
+        "worker_version"   : "12",
+        "worker_commit"    : os.environ.get("GIT_COMMIT", "unknown"),
     }
 
     # Include overlap regions if requested and available
