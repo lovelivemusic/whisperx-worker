@@ -100,6 +100,36 @@ def run(job):
     job_id     = job["id"]
     job_input  = job["input"]
 
+    # ------------- handle warmup ping (before validation) ----------
+    if job_input.get("warmup"):
+        worker_verbose = job_input.get("worker_verbose", False)
+        gpu_info = ""
+        if torch.cuda.is_available():
+            gpu_info = (f"GPU: {torch.cuda.get_device_name(0)}, "
+                        f"VRAM: {torch.cuda.get_device_properties(0).total_mem / 1e9:.1f}GB")
+        logger.info(f"[WARMUP] Ping received. {gpu_info}")
+
+        preload = job_input.get("preload_model", False)
+        model_loaded = hasattr(MODEL, '_cached_model') and MODEL._cached_model is not None
+
+        if preload and not model_loaded:
+            logger.info("[WARMUP] Preloading WhisperX model...")
+            try:
+                MODEL.preload_model()
+                model_loaded = MODEL._cached_model is not None
+                logger.info(f"[WARMUP] WhisperX model preloaded: {model_loaded}")
+            except Exception as e:
+                logger.error(f"[WARMUP] Preload failed: {e}", exc_info=True)
+                return {"status": "warm", "preload": "failed", "error": str(e)}
+        elif preload:
+            logger.info("[WARMUP] Model already loaded, skipping preload")
+
+        if worker_verbose:
+            logger.info(f"[WARMUP] Model loaded: {model_loaded}, "
+                        f"PANNs loaded: True, Diarization: available")
+
+        return {"status": "warm", "preload": "done" if preload else "skipped", "model_loaded": model_loaded}
+
     # ------------- validate basic schema ----------------------------
     validated = validate(job_input, INPUT_VALIDATIONS)
     if "errors" in validated:
