@@ -112,5 +112,15 @@ INPUT_VALIDATIONS = {
         'type': bool,
         'required': False,
         'default': False
-    }
+    },
+    'worker_verbose': {
+        'type': bool,
+        'required': False,
+        'default': False
+    },
+    'preload_model': {
+        'type': bool,
+        'required': False,
+        'default': False
+    },
 }

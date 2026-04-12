@@ -68,6 +68,20 @@ class Predictor(BasePredictor):
                 shutil.copy(bundled, vad_cache)
 
         # Note: WhisperX model loaded on first request (preloading caused container crashes on some GPUs)
+        self._cached_model = None
+
+    def preload_model(self, whisper_arch="large-v3"):
+        """Preload WhisperX model into GPU memory. Called from warmup ping when WHISPERX_PRELOAD_MODEL=true."""
+        if self._cached_model is not None:
+            logger.info(f"Model {whisper_arch} already preloaded")
+            return
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        compute_type = "float16" if torch.cuda.is_available() else "int8"
+        logger.info(f"Preloading WhisperX {whisper_arch} on {device} ({compute_type})...")
+        start = time.time_ns() / 1e6
+        self._cached_model = whisperx.load_model(whisper_arch, device, compute_type=compute_type)
+        elapsed = time.time_ns() / 1e6 - start
+        logger.info(f"WhisperX {whisper_arch} preloaded in {elapsed:.0f}ms")
 
     def predict(
             self,
@@ -170,8 +184,12 @@ class Predictor(BasePredictor):
 
             start_time = time.time_ns() / 1e6
 
-            model = whisperx.load_model(whisper_arch, device, compute_type=compute_type, language=language,
-                                        asr_options=asr_options, vad_options=vad_options)
+            if self._cached_model is not None:
+                model = self._cached_model
+                logger.info("Using preloaded WhisperX model")
+            else:
+                model = whisperx.load_model(whisper_arch, device, compute_type=compute_type, language=language,
+                                            asr_options=asr_options, vad_options=vad_options)
 
             if debug:
                 elapsed_time = time.time_ns() / 1e6 - start_time
