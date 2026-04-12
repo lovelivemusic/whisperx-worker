@@ -35,6 +35,20 @@ You can also pass `huggingface_access_token` per-request to override the env var
 - Highly parallelized batch processing
 - Voice activity detection with configurable parameters
 - Runpod serverless compatibility
+- PANNs CNN14 audio classification (`task: 'classify'`)
+- Warmup ping with optional model preloading
+- Worker-verbose logging for diagnostics
+
+## Warmup Ping
+
+Send `{"input": {"warmup": true}}` to pre-warm the worker. Optional flags:
+
+- `preload_model: true` — load WhisperX large-v3 into VRAM (~2-3 min, ~3GB)
+- `worker_verbose: true` — log GPU info, model state, preload timing
+
+Returns `{"status": "warm", "preload": "done|skipped", "model_loaded": true|false}`.
+
+Model preloading should only be triggered when the worker is already warm (idle) to avoid competing with PANNs classification for GPU memory during cold start.
 
 ## Input Parameters
 
@@ -55,6 +69,9 @@ You can also pass `huggingface_access_token` per-request to override the env var
 | `min_speakers` | int | No | `null` | Minimum number of speakers (only applicable if diarization is enabled) |
 | `max_speakers` | int | No | `null` | Maximum number of speakers (only applicable if diarization is enabled) |
 | `debug` | bool | No | `false` | Whether to print compute/inference times and memory usage information |
+| `worker_verbose` | bool | No | `false` | Detailed worker-side logging (GPU info, model state, timing) |
+| `preload_model` | bool | No | `false` | Trigger WhisperX model preload (used with warmup ping) |
+| `warmup` | bool | No | `false` | Warmup ping — returns immediately, no audio_file needed |
 | `speaker_samples` | list | No | `[]` | List of speaker sample objects for speaker diarization |
 
 ## Usage Examples
