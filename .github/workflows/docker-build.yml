@@ -2,7 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'build/stable-*']
 
 jobs:
   build:
@@ -25,7 +25,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: wearethemods/whisperx-worker:latest
+          tags: wearethemods/whisperx-worker:${{ github.ref == 'refs/heads/main' && 'latest' || 'stable' }}
           platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
