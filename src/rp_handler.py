@@ -106,7 +106,7 @@ def run(job):
         gpu_info = ""
         if torch.cuda.is_available():
             gpu_info = (f"GPU: {torch.cuda.get_device_name(0)}, "
-                        f"VRAM: {torch.cuda.get_device_properties(0).total_mem / 1e9:.1f}GB")
+                        f"VRAM: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f}GB")
         logger.info(f"[WARMUP] Ping received. {gpu_info}")
 
         preload = job_input.get("preload_model", False)
